@@ -1,0 +1,10 @@
+version: '3.8'
+services:
+  cache:
+    image: postgres:10.4
+    environment:
+        - POSTGRES_DB=${DB_DATABASE}
+        - POSTGRES_USER=${DB_USERNAME}
+        - POSTGRES_PASSWORD=${DB_PASSWORD}
+    ports:
+        - ${D_DB_PORT}:5432
