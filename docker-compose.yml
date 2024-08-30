@@ -2,7 +2,6 @@ version: "3"
 services:
   postgresql-master:
     image: bitnami/postgresql
-    restart: always
     ports:
       - '5432:5432'
     volumes:
@@ -21,9 +20,8 @@ services:
 
   postgresql-slave:
     image: bitnami/postgresql
-    restart: always
     ports:
-      - '5432'
+      - '5433:5432'
     depends_on:
       - postgresql-master
     environment:
@@ -36,15 +34,6 @@ services:
       - POSTGRESQL_REPLICATION_PASSWORD=repl_user
       - POSTGRESQL_MASTER_PORT_NUMBER=5432
       - ALLOW_EMPTY_PASSWORD=yes
-
-  cache:
-    image: postgres:10.4
-    environment:
-        - POSTGRES_DB=${DB_DATABASE}
-        - POSTGRES_USER=${DB_USERNAME}
-        - POSTGRES_PASSWORD=${DB_PASSWORD}
-    ports:
-        - ${D_DB_PORT}:5432
 
 volumes:
   postgresql_master_data:
