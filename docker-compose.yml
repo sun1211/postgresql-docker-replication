@@ -1,40 +1,29 @@
-version: "3"
+version: '3.8'
 services:
-  postgresql-master:
-    image: bitnami/postgresql
-    ports:
-      - '5432:5432'
+  primary:
+    image: postgres:16
+    container_name: pg-primary
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     volumes:
-      - postgresql_master_data:/bitnami/postgresql
-      - ./db.sql:/docker-entrypoint-initdb.d/db.sql
-    environment:
-      - POSTGRESQL_PGAUDIT_LOG=READ,WRITE
-      - POSTGRESQL_LOG_HOSTNAME=true
-      - POSTGRESQL_REPLICATION_MODE=master
-      - POSTGRESQL_REPLICATION_USER=repl_user
-      - POSTGRESQL_REPLICATION_PASSWORD=repl_user
-      - POSTGRESQL_USERNAME=postgres
-      - POSTGRESQL_PASSWORD=postgres
-      - POSTGRESQL_DATABASE=development_database
-      - ALLOW_EMPTY_PASSWORD=yes
-
-  postgresql-slave:
-    image: bitnami/postgresql
+      - ./primary/data:/var/lib/postgresql/data
+      - ./primary/init-replication.sh:/docker-entrypoint-initdb.d/init-replication.sh:ro
     ports:
-      - '5433:5432'
-    depends_on:
-      - postgresql-master
-    environment:
-      - POSTGRESQL_PASSWORD=postgres
-      - POSTGRESQL_MASTER_HOST=postgresql-master
-      - POSTGRESQL_PGAUDIT_LOG=READ
-      - POSTGRESQL_LOG_HOSTNAME=true
-      - POSTGRESQL_REPLICATION_MODE=slave
-      - POSTGRESQL_REPLICATION_USER=repl_user
-      - POSTGRESQL_REPLICATION_PASSWORD=repl_user
-      - POSTGRESQL_MASTER_PORT_NUMBER=5432
-      - ALLOW_EMPTY_PASSWORD=yes
+      - "5432:5432"
 
-volumes:
-  postgresql_master_data:
-    driver: local
+  replica:
+    image: postgres:16
+    container_name: pg-replica
+    depends_on:
+      - primary
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      REPLICATOR_PASSWORD: replicator_password
+    volumes:
+      - ./replica/data:/var/lib/postgresql/data
+      - ./replica/replica-entrypoint.sh:/usr/local/bin/replica-entrypoint.sh:ro
+    entrypoint: ["/usr/local/bin/replica-entrypoint.sh"]
+    ports:
+      - "5433:5432"
