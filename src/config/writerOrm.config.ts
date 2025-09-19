@@ -5,7 +5,7 @@ export const writerDataSource = new DataSource({
   entities: [
     `${__dirname}/../**/*.entity.{ts,js}`,
   ],
-  host: "192.168.1.13",
+  host: "localhost",
   port: 5432,
   username: "postgres",
   password: "postgres",

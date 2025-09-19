@@ -10,12 +10,19 @@
     "dotenv": "^10.0.0",
     "express": "^4.17.1",
     "pg": "^8.12.0",
+    "reflect-metadata": "^0.1.13",
     "typeorm": "^0.3.20"
   },
   "scripts": {
     "build": "rimraf build && tsc -p tsconfig.json",
     "start": "NODE_ENV=test nodemon src/api.ts",
-    "start-postgress": "docker-compose up -d"
+    "typeorm": "typeorm-ts-node-commonjs",
+    "migration:generate": "NODE_ENV=development typeorm-ts-node-commonjs migration:generate -d src/config/orm.config.ts",
+    "migration:run": "NODE_ENV=development typeorm-ts-node-commonjs migration:run -d src/config/orm.config.ts",
+    "migration:revert": "NODE_ENV=development typeorm-ts-node-commonjs migration:revert -d src/config/orm.config.ts",
+    "start-postgress": "docker-compose up -d",
+    "setup": "mkdir -p primary/data && mkdir -p replica/data && chmod +x replica/replica-entrypoint.sh && chmod +x primary/init-replication.sh",
+    "clean": "docker compose down && rm -rf primary/data && rm -rf replica/data"
   },
   "devDependencies": {
     "@types/express": "^4.17.13",

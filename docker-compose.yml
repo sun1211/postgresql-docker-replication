@@ -6,21 +6,31 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: development_database
+      POSTGRES_INITDB_ARGS: "--auth-host=md5"
     volumes:
       - ./primary/data:/var/lib/postgresql/data
       - ./primary/init-replication.sh:/docker-entrypoint-initdb.d/init-replication.sh:ro
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d development_database"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   replica:
     image: postgres:16
     container_name: pg-replica
     depends_on:
-      - primary
+      primary:
+        condition: service_healthy
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       REPLICATOR_PASSWORD: replicator_password
+      POSTGRES_DB: development_database
     volumes:
       - ./replica/data:/var/lib/postgresql/data
       - ./replica/replica-entrypoint.sh:/usr/local/bin/replica-entrypoint.sh:ro

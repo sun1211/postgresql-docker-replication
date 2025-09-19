@@ -6,6 +6,11 @@ set -e
 
 PGDATA=/var/lib/postgresql/data
 
+# Enable UUID extension for the database
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-SQL
+  CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+SQL
+
 # Append recommended replication settings (persist via ALTER SYSTEM)
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" <<-SQL
   ALTER SYSTEM SET wal_level = 'replica';

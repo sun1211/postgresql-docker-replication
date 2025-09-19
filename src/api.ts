@@ -2,7 +2,7 @@ import 'dotenv/config';
 import cors from 'cors';
 import express from 'express';
 import axios from 'axios';
-import { getDBConnection, getWriterDBConnection } from './config/database.config';
+import { getDBConnection, getWriteConnection } from './config/database.config';
 import { createUser, getAllUsers } from './repositories/UserRepositories';
 
 const app = express();
@@ -46,7 +46,7 @@ app.get('/users', async (req, res) => {
 const appPort = 4000;
 async function init() {
     await getDBConnection();
-    await getWriterDBConnection(); //TypeORM will automatically direct write operations to the master database and read operations to one of the slave databases.
+    await getWriteConnection(); //TypeORM will automatically direct write operations to the master database and read operations to one of the slave databases.
 
     return app.listen(appPort, () => {
         console.info(`Example app listening on port ${appPort}!`);
