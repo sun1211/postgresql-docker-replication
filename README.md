@@ -1,68 +1,144 @@
-# PostgreSQL Master–Replica Example
+# PostgreSQL Master Replica
 
-This project demonstrates a **PostgreSQL 16 primary–standby (master–replica)** setup using Docker Compose and streaming replication.
+This project demonstrates a **PostgreSQL 16 primary–standby (master–replica)** setup using Docker Compose and streaming replication, with a TypeORM API for testing database operations.
 
 ---
 
 ## 📂 Project Structure
 
 ```
-
 .
 ├── docker-compose.yml
 ├── primary/
 │   ├── data/                   # Primary database volume (ignored in git)
 │   └── init-replication.sh     # Script to configure primary for replication
-└── replica/
-├── data/                   # Replica database volume (ignored in git)
-└── replica-entrypoint.sh   # Script to bootstrap replica via pg\_basebackup
-
-````
+├── replica/
+│   ├── data/                   # Replica database volume (ignored in git)
+│   └── replica-entrypoint.sh   # Script to bootstrap replica via pg_basebackup
+├── src/                        # TypeORM API source code
+└── package.json                # Node.js dependencies and scripts
+```
 
 ---
 
 ## ⚙️ Setup
 
-1. **Clone the repo and prepare folders**
-   ```bash
-   git clone <your-repo-url>
-   cd <your-repo>
-   mkdir -p primary/data replica/data
-   chmod +x primary/init-replication.sh replica/replica-entrypoint.sh
-   ```
+### 1. Clone the repo and prepare folders
 
-2. **Start the primary container**
+```bash
+git clone <your-repo-url>
+cd <your-repo>
 
-   ```bash
-   docker compose up -d primary
-   docker logs -f pg-primary
-   ```
+# Use npm script to setup directories and permissions
+npm run setup
+```
 
-   Wait until the primary finishes initialization and is ready to accept connections.
+### 2. Install dependencies
 
-3. **Start the replica**
+```bash
+npm install
+```
 
-   ```bash
-   docker compose up -d replica
-   docker logs -f pg-replica
-   ```
+### 3. Start the PostgreSQL containers
 
-   The replica will run `pg_basebackup`, configure standby mode, and begin streaming.
+```bash
+# Start both primary and replica containers
+npm run start-postgress
+
+# Or manually:
+docker compose up -d
+```
+
+### 4. Run database migrations
+
+After the containers are running, migrate the database:
+
+```bash
+npm run migration:run
+```
+
+### 5. Start the API server
+
+```bash
+npm start
+```
+
+The API will be available at `http://localhost:3000`
 
 ---
 
 ## ▶️ Running
 
-Start both containers:
+### Quick start (all services):
 
 ```bash
-docker compose up -d
+npm run setup           # Setup directories
+npm run start-postgress # Start PostgreSQL containers
+npm run migration:run   # Run database migrations
+npm start              # Start API server
 ```
 
-Stop everything:
+### Stop everything:
 
 ```bash
 docker compose down
+```
+
+### Clean up (removes all data):
+
+```bash
+npm run clean
+```
+
+---
+
+## 🔌 API Testing
+
+The TypeORM API provides endpoints for testing database operations across the master-replica setup.
+
+### Create a User
+
+```bash
+curl -X POST http://localhost:3000/users \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "John Doe",
+    "email": "john.doe@example.com"
+  }'
+```
+
+**Expected Response:**
+```json
+{
+  "id": 1,
+  "name": "John Doe",
+  "email": "john.doe@example.com",
+  "createdAt": "2024-01-20T10:30:00.000Z"
+}
+```
+
+### Get All Users
+
+```bash
+curl -X GET http://localhost:3000/users
+```
+
+**Expected Response:**
+```json
+[
+  {
+    "id": 1,
+    "name": "John Doe",
+    "email": "john.doe@example.com",
+    "createdAt": "2024-01-20T10:30:00.000Z"
+  }
+]
+```
+
+### Get User by ID
+
+```bash
+curl -X GET http://localhost:3000/users/1
 ```
 
 ---
@@ -77,7 +153,6 @@ docker exec -it pg-primary psql -U postgres -c \
 ```
 
 **Expected:**
-
 * `state = streaming`
 * `sync_state = async` (or `sync` if configured)
 
@@ -122,7 +197,28 @@ docker exec -it pg-replica psql -U postgres -c \
 
 ---
 
-### 6. Functional test
+### 6. Functional test via API
+
+Test replication by creating a user via the API (writes to primary) and then checking if it appears on the replica:
+
+**Create user via API:**
+```bash
+curl -X POST http://localhost:3000/users \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Test User", "email": "test@example.com"}'
+```
+
+**Check on replica directly:**
+```bash
+docker exec -it pg-replica psql -U postgres -c \
+"SELECT * FROM users ORDER BY id DESC LIMIT 1;"
+```
+
+**Expected:** The newly created user should appear on the replica.
+
+---
+
+### 7. Database-level functional test
 
 On **primary**:
 
@@ -142,6 +238,28 @@ docker exec -it pg-replica psql -U postgres -c "SELECT * FROM repl_test;"
 
 ---
 
+## 🔄 Database Management Scripts
+
+### Generate new migration
+
+```bash
+npm run migration:generate -- src/migrations/NewMigrationName
+```
+
+### Run migrations
+
+```bash
+npm run migration:run
+```
+
+### Revert last migration
+
+```bash
+npm run migration:revert
+```
+
+---
+
 ## 🚀 Promote Replica (Failover)
 
 Promote the standby to a new primary:
@@ -150,23 +268,36 @@ Promote the standby to a new primary:
 docker exec -it pg-replica psql -U postgres -c "SELECT pg_promote();"
 ```
 
+After promotion, you'll need to update your application's database connection to point to the new primary.
+
 ---
 
 ## 🧹 Cleanup
 
-Remove containers and data volumes:
+### Remove containers only (keep data):
 
 ```bash
-docker compose down -v
+docker compose down
 ```
+
+### Remove containers and data volumes:
+
+```bash
+npm run clean
+```
+
+This will stop containers and remove all database data from both primary and replica.
+
+---
 
 ## ⚠️ Notes
 
 * This setup is for **local development/demo** only.
+* The API connects to the **primary** database for both reads and writes.
 * For production:
-
   * Use **strong passwords** and restrict replication connections in `pg_hba.conf`.
   * Consider **replication slots** to prevent WAL loss.
   * Enable **TLS** for secure connections.
   * Use HA tools like **Patroni**, **repmgr**, or **pgpool** for automated failover and management.
-
+  * Implement read/write splitting to direct reads to replica and writes to primary.
+  * Add proper error handling and connection pooling in the API.
