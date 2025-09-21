@@ -4,8 +4,8 @@ import { User } from "../entities/User.entity";
 import { DataSource, Repository } from "typeorm";
 
 export async function createUser(first_name: string, last_name: string, email: string) {
-    const userRepository = dataSource.getRepository(User);
-    // const userRepository = writerDataSource.getRepository(User); //TypeORM will automatically direct write operations to the master database and read operations to one of the slave databases.
+    // const userRepository = dataSource.getRepository(User);
+    const userRepository = writerDataSource.getRepository(User); //TypeORM will automatically direct write operations to the master database and read operations to one of the slave databases.
     const newUser = userRepository.create({
         first_name,
         last_name,
